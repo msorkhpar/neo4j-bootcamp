@@ -1,0 +1,55 @@
+services:
+  neo4j:
+    hostname: neo4j-bootcamp-db
+    container_name: neo4j-bootcamp-db
+    image: 'neo4j:4.4-community'
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "neo4j", "status" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    env_file:
+      - ./configs/neo4j.env
+    volumes:
+      - neo4j-bootcamp-db-data:/data
+    ports:
+      - '7474:7474'
+      - '7687:7687'
+    networks:
+      - neo4j-bootcamp-network
+
+  jupyter:
+    image: jupyter/minimal-notebook
+    container_name: neo4j-bootcamp-jupyter
+    hostname: neo4j-bootcamp-jupyter
+    volumes:
+      - jupyter-data:/home/jovyan/work/
+      - ./configs/jupyter-entrypoint.sh:/jupyter-entrypoint.sh
+    env_file:
+      - ./configs/jupyter.env
+    restart: unless-stopped
+    entrypoint: [ "/bin/bash", "/jupyter-entrypoint.sh" ]
+    ports:
+      - '8888:8888'
+    networks:
+      - neo4j-bootcamp-network
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+
+networks:
+  neo4j-bootcamp-network:
+    external: true
+
+volumes:
+  neo4j-bootcamp-db-data:
+    external: true
+
+  jupyter-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./src
+      o: bind
