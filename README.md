@@ -2,6 +2,14 @@
 
 This repository contains my personal notes and assignments from the `2024 Complete Neo4j GraphDB Bootcamp` on Udemy. It's designed to help anyone interested in learning about Neo4j graph database technology through practical examples and real-world applications.
 
+
+![Movie Graph structure](images/visualization.gif)
+
+![Movie Graph](images/movie-graph.gif)
+
+<img alt="Radial Layout" src="images/movie-graph-radial.png" width="800">
+<img alt="Highlighting Cypher queries in Pycharm" src="images/Pycharm-cypher-support.png" width="800">
+
 ## Getting Started
 
 The environment includes:

@@ -39,12 +39,17 @@ class Neo4jHelper:
             if as_graph:
                 graph = result.graph()
                 w = GraphWidget(overview_enabled=True, graph=graph)
-                w.set_node_label_mapping(
-                    lambda x: x["properties"][caption] if caption else Neo4jHelper.default_node_caption
-                )
+                if isinstance(caption, str):
+                    w.set_node_label_mapping(
+                        lambda x: x["properties"][caption] if caption else Neo4jHelper.default_node_caption
+                    )
+                elif callable(caption):
+                    w.set_node_label_mapping(caption)
+                else:
+                    w.set_node_label_mapping(Neo4jHelper.default_node_caption)
                 w.set_sidebar(False)
                 if size_mapping:
-                    w.set_node_size_mapping(lambda index,node: size_mapping)
+                    w.set_node_size_mapping(lambda index, node: size_mapping)
                 return w
             else:
                 print(result.consume().counters)
@@ -54,8 +59,8 @@ class Neo4jHelper:
             queries = f.read()
         return self.execute_cypher(queries, as_graph)
 
-    def show_all(self):
-        g = self.execute_cypher("MATCH (n) -[r]-> (m) RETURN n,r,m")
+    def show_all(self, caption=None, size_mapping: tuple[int, int] = None):
+        g = self.execute_cypher("MATCH (n) -[r]-> (m) RETURN n,r,m", caption=caption, size_mapping=size_mapping)
         g.show()
 
 
