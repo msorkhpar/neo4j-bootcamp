@@ -20,7 +20,10 @@ services:
       - neo4j-bootcamp-network
 
   jupyter:
-    image: jupyter/minimal-notebook
+    #image: jupyter/minimal-notebook
+    build:
+      context: .
+      dockerfile: Dockerfile # Assuming the Dockerfile is in the same directory as your docker-compose.yml
     container_name: neo4j-bootcamp-jupyter
     hostname: neo4j-bootcamp-jupyter
     volumes:
