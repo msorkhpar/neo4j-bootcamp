@@ -1,7 +1,8 @@
 # Neo4j Bootcamp Repository
 
-This repository contains my personal notes and assignments from the `2024 Complete Neo4j GraphDB Bootcamp` on Udemy. It's designed to help anyone interested in learning about Neo4j graph database technology through practical examples and real-world applications.
-
+This repository contains my personal notes and assignments from the `2024 Complete Neo4j GraphDB Bootcamp` on Udemy.
+It's designed to help anyone interested in learning about Neo4j graph database technology through practical examples and
+real-world applications.
 
 ![Movie Graph structure](images/visualization.gif)
 
@@ -24,8 +25,10 @@ The environment includes:
 
 ### Prerequisites
 
-- **Config files**: Ensure the `/.configs/jupyter.env` and `./configs/neo4j.env` files have the correct ports and passwords.
-- **Jupyter plugins**: Modify `./configs/jupyter-entrypoint.sh` to install necessary Jupyter plugins or Python libraries.
+- **Config files**: Ensure the `/.configs/jupyter.env` and `./configs/neo4j.env` files have the correct ports and
+  passwords.
+- **Jupyter plugins**: Modify `./configs/jupyter-entrypoint.sh` to install necessary Jupyter plugins or Python
+  libraries.
 - **Docker**: Docker must be installed on your machine.
 
 ### Running the Servers
@@ -39,19 +42,51 @@ docker compose up -d
 ```
 
 ### Jupyter Notebook Lab
-Access the Jupyter Notebook Lab at [http://localhost:8888/lab](http://localhost:8888/lab/workspaces/auto-c/tree/work?token=neo4j-bootcamp). Default token: `neo4j-bootcamp`.
+
+Access the Jupyter Notebook Lab
+at [http://localhost:8888/lab](http://localhost:8888/lab/workspaces/auto-c/tree/work?token=neo4j-bootcamp). Default
+token: `neo4j-bootcamp` (change the port if it has been changed in `configs/jupyter.env`).
 
 ### Neo4j Browser
-Access the Neo4j Browser at http://localhost:7474. Default username: `neo4j`, password: `password`.
+
+Access the Neo4j Browser at http://localhost:7474. Default username: `neo4j`, database:`neo4j`, password: `password`.
+(change the values if they have been changed in `configs/jupyter.env`).
+
+## Managing nbstripout
+
+To install nbstripout, run:
+
+```shell 
+pip install nbstripout
+nbstripout --install
+```
+
+### disable nbstripout
+
+If you want to disable nbstripout before merge:
+
+### Disable nbstripout
+```shell
+sed -i '/^\(\*.ipynb filter=nbstripout\|*.zpln filter=nbstripout\|*.ipynb diff=ipynb\)$/s/^#*/#/' .gitattributes
+```
+
+### re-enable nbstripout
+
+```shell
+sed -i '/^#*\(\*.ipynb filter=nbstripout\|*.zpln filter=nbstripout\|*.ipynb diff=ipynb\)$/s/^#*//'  .gitattributes
+```
 
 ## Destroying the Environment
+
 To remove all components:
 
 ```shell
 docker compose down -v
 docker volume rm neo4j-bootcamp-db-data
 docker network rm neo4j-bootcamp-network
+nbstripout --uninstall
 ```
 
 ## Author
+
 Mo Sorkhpar, [LinkedIn](https://www.linkedin.com/in/mosorkhpar/)
