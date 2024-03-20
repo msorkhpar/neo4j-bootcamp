@@ -55,12 +55,12 @@ class Neo4jHelper:
             queries = f.read()
         return self.cypher(queries)
 
-    def show_all(self, caption=None, size_mapping: tuple[int, int] = None) -> None:
+    def show_all(self, caption=None, layout=GraphLayout.ORGANIC, size_mapping: tuple[int, int] = None) -> None:
         (
             self.cypher("MATCH (n) -[r]-> (m) RETURN n,r,m")
             .with_node_size(size_mapping)
             .with_caption(caption)
-            .show()
+            .show(layout)
         )
 
 
@@ -106,7 +106,6 @@ class CypherQueryBuilder:
 
     def show(self, layout=GraphLayout.ORGANIC) -> None:
         w=self.execute_for_graph()
-        print(layout.value)
         w.set_graph_layout(layout.value)
         w.show()
 
