@@ -4,6 +4,7 @@ import json
 
 from neo4j import GraphDatabase, basic_auth
 from neo4j._work.summary import SummaryCounters
+from neo4j.graph import Graph
 from yfiles_jupyter_graphs import GraphWidget
 from pandas import DataFrame
 
@@ -89,8 +90,9 @@ class Neo4jHelper:
         def execute_for_graph(self) -> GraphWidget:
 
             with self._driver.session(database=self.neo4j_db) as session:
-                result = session.run(self.cypher_query)
-                w = GraphWidget(overview_enabled=True, graph=result.graph())
+                graph: Graph = session.run(self.cypher_query).graph()
+                print(f"Number of Nodes:[{len(graph.nodes)}], Number of Edges:[{len(graph.relationships)}]")
+                w = GraphWidget(overview_enabled=True, graph=graph)
                 w.set_sidebar(False)
                 w.set_node_label_mapping(self.caption)
                 if isinstance(self.caption, str):
@@ -100,7 +102,6 @@ class Neo4jHelper:
 
                 if self.node_size:
                     w.set_node_size_mapping(lambda index, node: self.node_size)
-
                 return w
 
         def show(self, layout=GraphLayout.ORGANIC) -> None:
