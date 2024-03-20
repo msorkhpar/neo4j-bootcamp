@@ -61,16 +61,13 @@ pip install nbstripout
 nbstripout --install
 ```
 
-### disable nbstripout
-
-If you want to disable nbstripout before merge:
-
 ### Disable nbstripout
+
 ```shell
 sed -i '/^\(\*.ipynb filter=nbstripout\|*.zpln filter=nbstripout\|*.ipynb diff=ipynb\)$/s/^#*/#/' .gitattributes
 ```
 
-### re-enable nbstripout
+### Re-enable nbstripout
 
 ```shell
 sed -i '/^#*\(\*.ipynb filter=nbstripout\|*.zpln filter=nbstripout\|*.ipynb diff=ipynb\)$/s/^#*//'  .gitattributes
