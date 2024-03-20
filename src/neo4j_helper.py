@@ -25,6 +25,7 @@ class GraphLayout(Enum):
     ORTHOGONAL_EDGE = "orthogonal_edge_router"
     ORGANIC_EDGE = "organic-organic_edge_router"
 
+
 class Neo4jHelper:
 
     def __init__(self, neo4j_host="neo4j-bootcamp-db", neo4j_port=7687, neo4j_user="neo4j", neo4j_password="password",
@@ -48,7 +49,7 @@ class Neo4jHelper:
             session.run("MATCH (n) DETACH DELETE n")
 
     def cypher(self, cypher_query) -> CypherQueryBuilder:
-        return CypherQueryBuilder(self, cypher_query)
+        return Neo4jHelper.CypherQueryBuilder(self, cypher_query)
 
     def cypher_file(self, cyper_path: str) -> CypherQueryBuilder:
         with open(cyper_path) as f:
@@ -63,69 +64,67 @@ class Neo4jHelper:
             .show(layout)
         )
 
+    class CypherQueryBuilder:
+        def __init__(self, helper, cypher_query):
+            self._driver = helper._driver
+            self.neo4j_db = helper.neo4j_db
+            self.caption = helper.caption
+            self.node_size = helper.node_size
+            self.cypher_query = cypher_query
 
-class CypherQueryBuilder:
-    def __init__(self, helper, cypher_query):
-        self._driver = helper._driver
-        self.neo4j_db = helper.neo4j_db
-        self.caption = helper.caption
-        self.node_size = helper.node_size
-        self.helper = helper
-        self.cypher_query = cypher_query
+        def with_caption(self, caption) -> Neo4jHelper.CypherQueryBuilder:
+            if caption is not None:
+                self.caption = caption
+            return self
 
-    def with_caption(self, caption):
-        if caption is not None:
-            self.caption = caption
-        return self
+        def with_node_size(self, size: tuple[int, int]) -> Neo4jHelper.CypherQueryBuilder:
+            self.node_size = size
+            return self
 
-    def with_node_size(self, size: tuple[int, int]) -> CypherQueryBuilder:
-        self.node_size = size
-        return self
+        def execute(self) -> SummaryCounters:
+            with self._driver.session(database=self.neo4j_db) as session:
+                result = session.run(self.cypher_query)
+                return result.consume().counters
 
-    def execute(self) -> SummaryCounters:
-        with self._driver.session(database=self.neo4j_db) as session:
-            result = session.run(self.cypher_query)
-            return result.consume().counters
+        def execute_for_graph(self) -> GraphWidget:
 
-    def execute_for_graph(self) -> GraphWidget:
+            with self._driver.session(database=self.neo4j_db) as session:
+                result = session.run(self.cypher_query)
+                w = GraphWidget(overview_enabled=True, graph=result.graph())
+                w.set_sidebar(False)
+                w.set_node_label_mapping(self.caption)
+                if isinstance(self.caption, str):
+                    w.set_node_label_mapping(
+                        lambda x: x["properties"][self.caption] if self.caption else default_node_caption
+                    )
 
-        with self._driver.session(database=self.neo4j_db) as session:
-            result = session.run(self.cypher_query)
-            w = GraphWidget(overview_enabled=True, graph=result.graph())
-            w.set_sidebar(False)
-            w.set_node_label_mapping(self.caption)
-            if isinstance(self.caption, str):
-                w.set_node_label_mapping(
-                    lambda x: x["properties"][self.caption] if self.caption else default_node_caption
-                )
+                if self.node_size:
+                    w.set_node_size_mapping(lambda index, node: self.node_size)
 
-            if self.node_size:
-                w.set_node_size_mapping(lambda index, node: self.node_size)
+                return w
 
-            return w
+        def show(self, layout=GraphLayout.ORGANIC) -> None:
+            w = self.execute_for_graph()
+            w.set_graph_layout(layout.value)
+            w.show()
 
-    def show(self, layout=GraphLayout.ORGANIC) -> None:
-        w=self.execute_for_graph()
-        w.set_graph_layout(layout.value)
-        w.show()
+        def execute_for_dataframe(self) -> DataFrame:
+            with self._driver.session(database=self.neo4j_db) as session:
+                result = session.run(self.cypher_query)
+                df = DataFrame([dict(record) for record in result])
+                return df
 
-    def execute_for_dataframe(self) -> DataFrame:
-        with self._driver.session(database=self.neo4j_db) as session:
-            result = session.run(self.cypher_query)
-            df = DataFrame([dict(record) for record in result])
-            return df
+        def execute_for_list(self) -> list:
+            df = self.execute_for_dataframe()
+            json_array = json.loads(df.to_json(orient="records"))
+            return json_array
 
-    def execute_for_list(self) -> list:
-        df = self.execute_for_dataframe()
-        json_array = json.loads(df.to_json(orient="records"))
-        return json_array
-
-    def execute_for_dictionary(self) -> dict:
-        json_array = self.execute_for_list()
-        if len(json_array) > 1:
-            raise ValueError("Multiple records have been returned, but only one is being fetched.")
-        else:
-            return json_array[0]
+        def execute_for_dictionary(self) -> dict:
+            json_array = self.execute_for_list()
+            if len(json_array) > 1:
+                raise ValueError("Multiple records have been returned, but only one is being fetched.")
+            else:
+                return json_array[0]
 
 
 if __name__ == '__main__':
