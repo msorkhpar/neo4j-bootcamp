@@ -2,7 +2,7 @@
   <injection language="Cypher" injector-id="python">
     <display-name>Cypher-Pycharm</display-name>
     <single-file value="false" />
-    <place><![CDATA[pyLiteralExpression().and(pyMethodArgument("cypher", 0, "neo4j_helper.Neo4jHelper"))]]></place>
-    <place><![CDATA[pyLiteralExpression().and(pyMethodArgument("cypher", 0, "src.neo4j_helper.Neo4jHelper"))]]></place>
+    <place><![CDATA[pyLiteralExpression().and(pyMethodArgument("cypher", 0, "neo4j_client_util.Neo4jClient"))]]></place>
+    <place><![CDATA[pyLiteralExpression().and(pyMethodArgument("cypher", 0, "src.neo4j_client_util.Neo4jClient"))]]></place>
   </injection>
 </LanguageInjectionConfiguration>

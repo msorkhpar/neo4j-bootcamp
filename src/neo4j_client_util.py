@@ -29,7 +29,7 @@ class GraphLayout(Enum):
 
 class Neo4jConfig:
     def __init__(self, host="neo4j-bootcamp-db", port=7687, user="neo4j", password="password", db_name="neo4j",
-                 caption: callable or str = default_node_caption, node_size: tuple[int, int] = (50, 50)):
+                 caption: callable | str = default_node_caption, node_size: tuple[int, int] = (50, 50)):
         self.host = host
         self.port = port
         self.user = user
@@ -39,26 +39,19 @@ class Neo4jConfig:
         self.node_size = node_size
 
 
-class Neo4jHelper:
+class Neo4jClient:
     _instance = None
-    _driver = None
     _config = None
 
     def __init__(self, config: Neo4jConfig = Neo4jConfig()):
         self._config = config
-        self._driver: Driver = GraphDatabase.driver(
-            f"bolt://{config.host}:{config.port}", auth=basic_auth(config.user, config.password)
-        )
-
-    def __del__(self):
-        self._driver.close()
 
     def clear_database(self) -> None:
-        with self._driver.session(database=self._config.db_name) as session:
-            session.run("MATCH (n) DETACH DELETE n")
+        with Neo4jQueryExecutor(self._config, Query("MATCH (n) DETACH DELETE n")) as executor:
+            executor.execute()
 
     @staticmethod
-    def setup_movie_graph() -> Neo4jHelper:
+    def setup_movie_graph() -> Neo4jClient:
         def movie_caption(node):
             return (
                 node["properties"].get("title", "")
@@ -66,53 +59,71 @@ class Neo4jHelper:
                 else node["properties"].get("name", "")
             )
 
-        helper = Neo4jHelper(Neo4jConfig(caption=movie_caption, node_size=(120, 120)))
+        helper = Neo4jClient(Neo4jConfig(caption=movie_caption, node_size=(120, 120)))
         helper.clear_database()
-        helper.cypher_file("./01_movie_graph_setup.cypher").execute()
+        with helper.cypher_file("./01_movie_graph_setup.cypher") as executor:
+            executor.execute()
         return helper
 
-    def cypher(self, cypher_query: str) -> CypherQueryBuilder:
-        return CypherQueryBuilder(self._config, self._driver, Query(cypher_query))
+    def cypher(self, cypher_query: str) -> Neo4jQueryExecutor:
+        return Neo4jQueryExecutor(self._config, Query(cypher_query))
 
-    def cypher_file(self, cyper_path: str) -> CypherQueryBuilder:
+    def cypher_file(self, cyper_path: str) -> Neo4jQueryExecutor:
         with open(cyper_path) as f:
             queries = f.read()
         return self.cypher(queries)
 
     def show_all(self, caption=None, layout=GraphLayout.ORGANIC, size_mapping: tuple[int, int] = None) -> None:
-        (
-            self.cypher("MATCH (n) -[r]-> (m) RETURN n,r,m")
-            .with_node_size(size_mapping)
-            .with_caption(caption)
-            .show(layout)
-        )
+        with self.cypher("MATCH (n) -[r]-> (m) RETURN n,r,m") as executor:
+            (
+                executor.with_caption(caption)
+                .with_node_size(size_mapping)
+                .show(layout)
+            )
 
 
-class CypherQueryBuilder:
-    def __init__(self, config: Neo4jConfig, driver: Driver, cypher_query: Query):
-        self.driver = driver
+class Neo4jQueryExecutor:
+    def __init__(self, config: Neo4jConfig, cypher_query: Query):
+        self._driver = None
+        self.config = config
         self.db_name = config.db_name
         self.caption = config.caption
         self.node_size = config.node_size
         self.cypher_query = cypher_query
 
-    def with_caption(self, caption) -> CypherQueryBuilder:
+    def __enter__(self):
+        if not self._driver:
+            self._driver = GraphDatabase.driver(
+                f"bolt://{self.config.host}:{self.config.port}",
+                auth=basic_auth(self.config.user, self.config.password)
+            )
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._driver:
+            self._driver.close()
+            self._driver = None
+
+    def with_caption(self, caption) -> Neo4jQueryExecutor:
         if caption is not None:
             self.caption = caption
         return self
 
-    def with_node_size(self, size: tuple[int, int]) -> CypherQueryBuilder:
+    def with_node_size(self, size: tuple[int, int]) -> Neo4jQueryExecutor:
         self.node_size = size
         return self
 
     def execute(self) -> SummaryCounters:
-        with self.driver.session(database=self.db_name) as session:
+        if not self._driver:
+            raise ValueError("Driver is not initialized. Use with statement to use this builder")
+        with self._driver.session(database=self.db_name) as session:
             result = session.run(self.cypher_query)
             return result.consume().counters
 
     def execute_for_graph(self) -> GraphWidget:
-
-        with self.driver.session(database=self.db_name) as session:
+        if not self._driver:
+            raise ValueError("Driver is not initialized. Use with statement to use this builder")
+        with self._driver.session(database=self.db_name) as session:
             graph: Graph = session.run(self.cypher_query).graph()
             print(f"Number of Nodes:[{len(graph.nodes)}], Number of Edges:[{len(graph.relationships)}]")
             widget = GraphWidget(overview_enabled=True, graph=graph)
@@ -133,7 +144,9 @@ class CypherQueryBuilder:
         widget.show()
 
     def execute_for_dataframe(self) -> DataFrame:
-        with self.driver.session(database=self.db_name) as session:
+        if not self._driver:
+            raise ValueError("Driver is not initialized. Use with statement to use this builder")
+        with self._driver.session(database=self.db_name) as session:
             result = session.run(self.cypher_query)
             dataframe = DataFrame([dict(record) for record in result])
             return dataframe
@@ -152,7 +165,7 @@ class CypherQueryBuilder:
 
 
 if __name__ == '__main__':
-    neo4j = Neo4jHelper(Neo4jConfig(host="localhost"))
+    neo4j = Neo4jClient(Neo4jConfig(host="localhost"))
     g = neo4j.cypher("CREATE (n:Person:`Software Engineer` {email:'a@outlook.com'}) RETURN n").with_caption(
         "email").with_node_size((200, 200)).execute_for_graph()
     del neo4j
